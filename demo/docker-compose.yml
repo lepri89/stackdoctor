@@ -17,9 +17,11 @@ services:
     ports: ["127.0.0.1:55432:5432"]
     volumes: ["./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shop -d shop"]
+      # Over TCP: during first-run init, Postgres runs a temporary socket-only server, so a socket
+      # check would pass while init.sql is still loading. Healthy = real server up + data loaded.
+      test: ["CMD-SHELL", "psql -h 127.0.0.1 -U shop -d shop -tAc 'SELECT 1 FROM orders LIMIT 1' | grep -q 1"]
       interval: 2s
-      retries: 60
+      retries: 150
 
   redis:
     image: redis:7
