@@ -1,0 +1,49 @@
+name: sd-demo
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: sd-demo-postgres
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: shop
+      POSTGRES_DB: shop
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c log_lock_waits=on
+      -c deadlock_timeout=1s
+      -c log_min_duration_statement=2000
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: ["./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shop -d shop"]
+      interval: 2s
+      retries: 60
+
+  redis:
+    image: redis:7
+    container_name: sd-demo-redis
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    ports: ["127.0.0.1:56379:6379"]
+
+  api:
+    build: ./app
+    container_name: sd-demo-api
+    command: uvicorn api:api --host 0.0.0.0 --port 8000
+    environment: &appenv
+      REDIS_URL: redis://redis:6379
+      APP_DATABASE_URL: postgresql://shop:shop@postgres:5432/shop
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+
+  worker:
+    build: ./app
+    container_name: sd-demo-worker
+    command: celery -A tasks worker --loglevel=INFO --concurrency=2 --hostname=worker1@%h
+    environment: *appenv
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }

@@ -1,0 +1,53 @@
+name: demo
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: docker compose demo, end to end
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.12"
+      - run: uv sync
+
+      - name: Start the demo stack
+        working-directory: demo
+        run: |
+          cp .env.example .env
+          docker compose up -d --build --wait --wait-timeout 300
+
+      - name: Live integration tests (read-only enforcement against the demo)
+        env:
+          STACKDOCTOR_TEST_DATABASE_URL: postgresql://shop:shop@localhost:55432/shop
+          STACKDOCTOR_TEST_REDIS_URL: redis://localhost:56379/0
+        run: uv run pytest -q tests/test_integration.py
+
+      - name: Break, diagnose over MCP stdio, assert, reset
+        run: uv run python demo/e2e.py
+
+      - name: Dump docker logs
+        if: failure()
+        working-directory: demo
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color --timestamps
+
+      - name: Upload diagnose() output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnose-output
+          path: demo/e2e-output/
+          if-no-files-found: ignore
+
+      - name: Stop the demo stack
+        if: always()
+        working-directory: demo
+        run: docker compose down -v
