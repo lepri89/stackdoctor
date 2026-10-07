@@ -2,6 +2,7 @@
 
 [![tests](https://github.com/lepri89/stackdoctor/actions/workflows/tests.yml/badge.svg)](https://github.com/lepri89/stackdoctor/actions/workflows/tests.yml)
 [![demo](https://github.com/lepri89/stackdoctor/actions/workflows/demo.yml/badge.svg)](https://github.com/lepri89/stackdoctor/actions/workflows/demo.yml)
+[![PyPI](https://img.shields.io/pypi/v/stackdoctor)](https://pypi.org/project/stackdoctor/)
 ![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
@@ -42,20 +43,23 @@ curl -LsSf https://astral.sh/uv/install.sh | sh                          # macOS
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"                # Windows
 ```
 
-Then one command runs the server, with no other install step:
+Then either run it straight from [PyPI](https://pypi.org/project/stackdoctor/) or install it once:
 
 ```sh
-uvx stackdoctor
+uvx stackdoctor                  # runs the latest release, nothing to install
+uv tool install stackdoctor      # or install it; the command is then `stackdoctor`
 ```
 
-Until the package is on PyPI, run it from a checkout with `uvx --from /path/to/stackdoctor stackdoctor`,
-or from git with `uvx --from git+https://github.com/lepri89/stackdoctor stackdoctor`.
+You don't normally run it by hand: your MCP client starts it (see [Configure](#configure)).
+To check that it works, run `uvx stackdoctor --help`, which prints usage and the configuration
+variables. To upgrade, use `uvx stackdoctor@latest` or `uv tool upgrade stackdoctor`.
 
 > **macOS 12 (Monterey):** `uvx stackdoctor` fails with `realpath: command not found`, because uv's
 > launcher script needs `realpath`, which only ships with macOS 13+. Use
 > `uvx --from stackdoctor python -m stackdoctor` instead. In client configs that means
-> `"args": ["--from", "stackdoctor", "python", "-m", "stackdoctor"]`. Alternatively, run
-> `uv tool install stackdoctor` once and use `stackdoctor` as the command.
+> `"args": ["--from", "stackdoctor", "python", "-m", "stackdoctor"]`. Alternatively, use
+> `uv tool install stackdoctor` and set the command to the full path of the installed tool,
+> `/Users/<username>/.local/bin/stackdoctor`. Its launcher doesn't need `realpath`.
 
 ## Configure
 
@@ -299,7 +303,9 @@ in WSL2 and run the `.ps1` scripts from PowerShell.
 ## Development
 
 ```sh
+git clone https://github.com/lepri89/stackdoctor && cd stackdoctor
 uv sync
+uv run stackdoctor --help                       # run from the checkout
 uv run pytest                                   # unit tests (safety layer, diagnose, logs)
 STACKDOCTOR_TEST_DATABASE_URL=postgresql://shop:shop@localhost:55432/shop \
 STACKDOCTOR_TEST_REDIS_URL=redis://localhost:56379/0 \
