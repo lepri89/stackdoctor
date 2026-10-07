@@ -72,6 +72,10 @@ Two details matter here:
   file has to capture stdout for stackdoctor to see when the worker stopped.
 - **`--pool threads`.** Celery's default prefork pool is unreliable on macOS with Python 3.13. The
   Docker demo uses prefork on Linux.
+- **Never stop it with Ctrl+C. Use `kill -TERM` from terminal A** (step 4). Ctrl+C sends SIGINT to the
+  whole foreground pipeline, so `tee` dies together with Celery. A moment later Celery prints
+  `worker: Warm shutdown` into a pipe nobody is reading, and the line never reaches `worker.log`.
+  `kill -TERM` signals only the Celery process, so `tee` stays alive and writes the line to the file.
 
 Back in **terminal A**, check that everything is healthy:
 
@@ -107,10 +111,14 @@ If you're recording in **Claude Desktop** instead, add this to
 ## 4. Break it (terminal A)
 
 ```sh
-kill -TERM "$(cat "$SD/worker.pid")"                  # B prints: worker: Warm shutdown (MainProcess)
+kill -TERM $(cat "$SD/worker.pid")                    # stop the worker (not Ctrl+C in B, see step 2)
 while [ -f "$SD/worker.pid" ]; do sleep 1; done        # wait until the worker has fully exited
+grep -i "warm shutdown" "$SD/worker.log"               # must print: worker: Warm shutdown (MainProcess)
 (cd demo/app && ../../.venv/bin/python enqueue.py 40)  # these 40 tasks have nobody to run them
 ```
+
+If the `grep` prints nothing, the worker was stopped some other way (for example Ctrl+C) and
+stackdoctor can't see the shutdown. Restart the worker (step 2) and stop it again with `kill -TERM`.
 
 ## 5. Ask (terminal C)
 
@@ -141,9 +149,11 @@ print(json.dumps({k: out[k] for k in ('findings', 'possible_causes')}, indent=2)
 Restart the worker in **terminal B** with the same command as step 2. It drains the 40 tasks, and
 asking again shows a healthy stack.
 
-When you're done (terminal A, after stopping the worker with Ctrl+C in B):
+When you're done, run this in terminal A. The first two lines stop the worker the same way as step 4:
 
 ```sh
+kill -TERM $(cat "$SD/worker.pid")
+while [ -f "$SD/worker.pid" ]; do sleep 1; done
 claude mcp remove stackdoctor
 redis-cli -p 56379 shutdown nosave
 pg_ctl -D "$SD/pg" stop -m fast

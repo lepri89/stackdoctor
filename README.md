@@ -5,6 +5,10 @@
 ![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
+![Claude diagnosing stuck Celery jobs with stackdoctor](docs/images/diagnosis.png)
+
+*Claude finds that the worker shut down and 40 jobs are waiting, in one diagnose() call.*
+
 > **Strictly read-only.** stackdoctor never writes, deletes, restarts, retries, revokes or sends anything.
 > Postgres sessions are forced read-only by the server, Redis commands go through an allowlist,
 > and Celery is only *inspected*. Secrets are redacted from every response.
