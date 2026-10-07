@@ -17,3 +17,31 @@ def test_unknown_flag_is_an_error(monkeypatch):
     with pytest.raises(SystemExit) as exit_info:
         server.main(["--nope"])
     assert exit_info.value.code == 2
+
+
+def test_version_matches_pyproject(capsys):
+    """pyproject.toml is the single source of truth for the version."""
+    import tomllib
+    from pathlib import Path
+
+    pyproject = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text())
+    with pytest.raises(SystemExit):
+        server.main(["--version"])
+    assert capsys.readouterr().out.strip() == f"stackdoctor {pyproject['project']['version']}"
+
+
+def test_version_fallback_when_not_installed(monkeypatch):
+    import importlib
+    import importlib.metadata
+
+    import stackdoctor
+
+    def missing(name):
+        raise importlib.metadata.PackageNotFoundError(name)
+
+    monkeypatch.setattr(importlib.metadata, "version", missing)
+    try:
+        assert importlib.reload(stackdoctor).__version__ == "0.0.0+unknown"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(stackdoctor)

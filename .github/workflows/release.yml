@@ -1,7 +1,7 @@
 name: release
 
 # Publishes to PyPI with trusted publishing (OIDC), no API token.
-# Triggered by pushing a version tag that matches pyproject.toml, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
+# Triggered by pushing a version tag that matches pyproject.toml: git tag "v$(uv version --short)" && git push origin --tags
 
 on:
   push:

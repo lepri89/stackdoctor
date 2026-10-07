@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import functools
-import importlib.metadata
 import inspect
 import logging
 import sys
@@ -12,6 +11,7 @@ import sys
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
+from . import __version__
 from . import diagnose as diag
 from .checks import celery, logs, postgres, redis
 from .config import get_config
@@ -181,19 +181,12 @@ def main(argv: list[str] | None = None) -> None:
         epilog=USAGE_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--version", action="version", version=f"stackdoctor {_version()}")
+    parser.add_argument("--version", action="version", version=f"stackdoctor {__version__}")
     parser.parse_args(argv)  # --help / --version print and exit here
 
     logging.basicConfig(level=logging.WARNING, stream=sys.stderr)  # stdout is the MCP channel
     get_config()
     mcp.run("stdio")
-
-
-def _version() -> str:
-    try:
-        return importlib.metadata.version("stackdoctor")
-    except importlib.metadata.PackageNotFoundError:
-        return "unknown"
 
 
 if __name__ == "__main__":

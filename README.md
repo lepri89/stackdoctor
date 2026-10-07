@@ -321,7 +321,7 @@ Releases go to PyPI from GitHub Actions with
    `lepri89`, repository `stackdoctor`, workflow `release.yml` and environment `pypi`. In GitHub, create
    an environment named `pypi` (Settings → Environments); adding yourself as a required reviewer is a good idea.
 2. Bump `version` in `pyproject.toml`, commit, then tag and push:
-   `git tag v0.1.0 && git push origin v0.1.0`.
+   `git tag "v$(uv version --short)" && git push origin "v$(uv version --short)"`.
    The workflow checks that the tag matches the version, runs the tests, builds, and publishes.
 
 ## License
