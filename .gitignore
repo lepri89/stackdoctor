@@ -6,3 +6,4 @@ dist/
 .pytest_cache/
 demo/.env
 demo/e2e-output/
+dist-skill/

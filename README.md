@@ -5,6 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/stackdoctor)](https://pypi.org/project/stackdoctor/)
 ![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
+[![M8ven](https://m8ven.ai/badge/mcp/lepri89/stackdoctor?variant=verified)](https://m8ven.ai/mcp/lepri89/stackdoctor?s=readme)
 
 ![Claude diagnosing stuck Celery jobs with stackdoctor](docs/images/diagnosis.png)
 

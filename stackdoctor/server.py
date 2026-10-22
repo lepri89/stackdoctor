@@ -29,12 +29,13 @@ mcp = MCPServer(
     ),
 )
 
+# Every tool sets all four hints explicitly (tests/test_server.py checks them over MCP).
 READ_ONLY = ToolAnnotations(read_only_hint=True, destructive_hint=False,
                             idempotent_hint=True, open_world_hint=False)
 
 
-def tool(fn):
-    """Register a tool whose output is always redacted and size-capped."""
+def guarded(fn):
+    """Make a tool's output always redacted and size-capped, and turn errors into results."""
     if inspect.iscoroutinefunction(fn):
         @functools.wraps(fn)
         async def wrapper(*args, **kwargs):
@@ -53,13 +54,13 @@ def tool(fn):
                 log.exception("tool %s failed", fn.__name__)
                 result = {"error": f"{type(e).__name__}: {str(e)[:500]}"}
             return safe_output(result, get_config().max_output_chars)
-    mcp.tool(annotations=READ_ONLY)(wrapper)
     return wrapper
 
 
 # --- Main -------------------------------------------------------------------
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 async def diagnose(symptom: str = "") -> dict:
     """Run all relevant checks concurrently and return one timestamped snapshot.
 
@@ -72,25 +73,29 @@ async def diagnose(symptom: str = "") -> dict:
 
 # --- Postgres (light; for deep Postgres health use Postgres MCP Pro) --------
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def active_queries(min_duration_s: float = 0) -> dict:
     """Non-idle Postgres sessions (incl. 'idle in transaction') with duration and wait events."""
     return postgres.active_queries(min_duration_s)
 
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def blocking_locks() -> dict:
     """Postgres sessions waiting on locks, and the sessions blocking them."""
     return postgres.blocking_locks()
 
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def slow_queries(limit: int = 10) -> dict:
     """Slowest statements by mean time from pg_stat_statements, plus seq-scan-heavy tables."""
     return postgres.slow_queries(limit)
 
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def run_select(sql: str, limit: int = 100) -> dict:
     """Run one read-only SELECT / WITH / EXPLAIN (no ANALYZE). A row LIMIT is always applied (max 1000)."""
     return postgres.run_select(sql, limit)
@@ -98,25 +103,29 @@ def run_select(sql: str, limit: int = 100) -> dict:
 
 # --- Celery (inspect API + broker, no Flower) -------------------------------
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def workers() -> dict:
     """Live Celery workers with their queues, concurrency, and active/reserved tasks."""
     return celery.workers()
 
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def queue_lengths(queues: list[str] | None = None) -> dict:
     """Messages waiting per Celery queue, read from the broker (Redis incl. priority queues, or RabbitMQ)."""
     return celery.queue_lengths(queues)
 
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def failed_tasks(limit: int = 20) -> dict:
     """Recent failed tasks from a Redis result backend (explains why if they aren't visible)."""
     return celery.failed_tasks(limit)
 
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def task_details(task_id: str) -> dict:
     """Stored result/traceback for one task, and whether a worker currently holds it."""
     return celery.task_details(task_id)
@@ -124,19 +133,22 @@ def task_details(task_id: str) -> dict:
 
 # --- Redis ------------------------------------------------------------------
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def memory_and_clients() -> dict:
     """Redis memory vs maxmemory, evictions, clients, keyspace and slowlog."""
     return redis.memory_and_clients()
 
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def scan_keys(pattern: str = "*", limit: int = 50) -> dict:
     """List Redis keys matching a glob pattern using SCAN (never KEYS). Max 500."""
     return redis.scan_keys(pattern, limit)
 
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def key_info(key: str) -> dict:
     """Type, TTL, size, encoding and a short redacted preview of one Redis key."""
     return redis.key_info(key)
@@ -144,13 +156,15 @@ def key_info(key: str) -> dict:
 
 # --- Logs -------------------------------------------------------------------
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def tail_logs(source: str, lines: int = 100) -> dict:
     """Last N lines (max 500) of a configured log source (file path or docker container)."""
     return logs.tail_logs(source, lines)
 
 
-@tool
+@mcp.tool(annotations=READ_ONLY)
+@guarded
 def search_logs(pattern: str, since_minutes: int = 30, source: str | None = None) -> dict:
     """Search configured log sources for a regex (case-insensitive) within the last N minutes."""
     return logs.search_logs(pattern, since_minutes, source)
